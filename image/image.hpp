@@ -23,7 +23,7 @@ namespace tcv {
     boost::shared_ptr<cv::Mat> frame_;
     PixelType *frame_data_;
 
-    explicit __InnerImage(cv::Mat &frame):frame_(frame){
+    explicit __InnerImage(boost::shared_ptr<cv::Mat> &frame):frame_(frame){
       frame_data_ = (PixelType *)frame_->data;
     }
 
@@ -44,8 +44,8 @@ namespace tcv {
 
     virtual Pixel operator()(const int r, const int c) const = 0;
     virtual boost::shared_ptr<cv::Mat> &Mat() = 0;
-    virtual int rows() const;
-    virtual int cols() const;
+    virtual int rows() const = 0;
+    virtual int cols() const = 0;
 
   protected:
   
@@ -58,32 +58,33 @@ namespace tcv {
 
   public:
     
-    explicit MonocularImage(boost::shared_ptr<cv::Mat> frame) : Image(frame) {}
+    explicit MonocularImage(boost::shared_ptr<cv::Mat> frame) : Image<PixelType,Channels>(frame) {}
 
+    typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
     //typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
 
     virtual Pixel operator()(const int r, const int c) const {
       Pixel px;
-      const int index = (r*image_data_.frame_.cols + c)*Channels;
-      memcpy(&image_data_.frame_data_[index],px.data_,Channels*sizeof(PixelType));
+      const int index = (r*this->image_data_.frame_->cols + c)*Channels;
+      memcpy(&this->image_data_.frame_data_[index],px.data_,Channels*sizeof(PixelType));
       return px;
     }
 
     virtual boost::shared_ptr<cv::Mat> &Mat(){
-      return image_data_.frame_;
+      return this->image_data_.frame_;
     }
 
     virtual int rows() const {
-      return image_data_.frame_.rows;
+      return this->image_data_.frame_->rows;
     }
 
     virtual int cols() const {
-      return image_data_.frame_.cols;
+      return this->image_data_.frame_->cols;
     }
 
   };
 
-
+  /*
   template<typename PixelType, int Channels>
   class StereoImage : public Image<PixelType,Channels> {
 
@@ -91,13 +92,13 @@ namespace tcv {
   
     explicit StereoImage(cv::Mat &stereo_frame) : Image(frame){}
     //explicit StereoImage(cv::Mat &left_frame,right_frame): TODO
-
+    typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
 
     //typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
   
 
   private:
-  };
+  };*/
 }
 
 #endif
