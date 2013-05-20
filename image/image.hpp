@@ -20,17 +20,18 @@ protected:
 
 };
 
+
 template<typename PixelType, int Channels>
 class Image {
 
 public:
 
-  struct Pixel_ {
+  //typedef Image<PixelType,Channels>::Pixel_ Pixel;
+  struct Pixel {
     PixelType data_[Channels];
   };
 
-  //typedef Image<PixelType,Channels>::Pixel_ Pixel;
-  typedef Pixel_ Pixel;
+  //typedef Pixel_ Pixel;
 
   explicit Image(cv::Mat &frame):image_data_(frame){}
 
@@ -50,9 +51,9 @@ public:
 
   //typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
   
-  virtual MonocularImage::Pixel operator()(const int r, const int c) const {
-    typename MonocularImage::Pixel px;
-    memcpy(image_data_.frame_data_,px.data_,Channels*sizeof(PixelType));
+  virtual typename Image<PixelType,Channels>::Pixel operator()(const int r, const int c) const {
+    typename Image<PixelType,Channels>::Pixel px;
+    memcpy(this->image_data_.frame_data_,px.data_,Channels*sizeof(PixelType));
     return px;
   }
 
