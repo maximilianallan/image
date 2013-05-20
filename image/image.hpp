@@ -1,59 +1,103 @@
-template<typename PixelType, int Channels>
-class __InnerImage {
+#ifndef __IMAGE_HPP__
+#define __IMAGE_HPP__
 
-public:
-  cv::Mat frame_;
-  PixelType *frame_data_;
-  friend class Image;
+#include <cv.h>
+#include <boost/shared_ptr.hpp>
 
-protected:
+namespace tcv {
 
-  explicit InnerImage_(cv::Mat &frame):frame_(frame){
-    frame_data_ = (PixelType *)frame_.data;
-  }
+  template<typename PixelType, int Channels>
+  class __InnerImage {
 
-};
+  public:
 
-template<typename PixelType, int Channels>
-class Image {
+    template<typename U, int V>
+    friend class Image;
+    template<typename U, int V>
+    friend class MonocularImage;
+    template<typename U, int V>
+    friend class StereoImage;
 
-public:
+  protected:
 
-  struct Pixel_ {
-    PixelType data_[Channels];
+    boost::shared_ptr<cv::Mat> frame_;
+    PixelType *frame_data_;
+
+    explicit __InnerImage(cv::Mat &frame):frame_(frame){
+      frame_data_ = (PixelType *)frame_->data;
+    }
+
   };
 
-  typedef Pixel_ Pixel;
+  template<typename PixelType, int Channels>
+  class Image {
 
-  virtual Pixel operator()(const int r, const int c);
-    
-protected:
+  public:
+
+    struct Pixel_ {
+      PixelType data_[Channels];
+    };
+
+    typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
+
+    explicit Image(boost::shared_ptr<cv::Mat> im) : image_data_(im) {}
+
+    virtual Pixel operator()(const int r, const int c) const = 0;
+    virtual boost::shared_ptr<cv::Mat> &Mat() = 0;
+    virtual int rows() const;
+    virtual int cols() const;
+
+  protected:
   
-  __InnerImage image_data_;
+    __InnerImage<PixelType,Channels> image_data_;
 
-};
+  };
 
-template<typename PixelType, int Channels>
-class MonocularImage : Image<PixelType,Channels> {
+  template<typename PixelType, int Channels>
+  class MonocularImage : public Image<PixelType,Channels> {
 
-public:
-  explicit MonocularImage(cv::Mat &frame):Image(frame){}
-  virtual Pixel operator()(const int r, const int c){
-    Pixel r;
-    memcpy(image_data_.frame_data_,r.data_,Channels*sizeof(PixelType));
-    return r;
-  }
+  public:
 
-};
+    explicit MonocularImage(boost::shared_ptr<cv::Mat> frame) : Image(frame) {}
+
+    //typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
+
+    virtual Pixel operator()(const int r, const int c) const {
+      Pixel px;
+      const int index = (r*image_data_.frame_.cols + c)*Channels;
+      memcpy(&image_data_.frame_data_[index],px.data_,Channels*sizeof(PixelType));
+      return px;
+    }
+
+    virtual boost::shared_ptr<cv::Mat> &Mat(){
+      return image_data_.frame_;
+    }
+
+    virtual int rows() const {
+      return image_data_.frame_.rows;
+    }
+
+    virtual int cols() const {
+      return image_data_.frame_.cols;
+    }
+
+  };
 
 
-template<typename PixelType, int Channels>
-class StereoImage : Image<PixelType,Channels> {
+  template<typename PixelType, int Channels>
+  class StereoImage : public Image<PixelType,Channels> {
 
-public:
+  public:
   
-  explicit StereoImage(cv::Mat &stereo_frame) : Image(frame){}
-  //explicit StereoImage(cv::Mat &left_frame,right_frame):
+    explicit StereoImage(cv::Mat &stereo_frame) : Image(frame){}
+    //explicit StereoImage(cv::Mat &left_frame,right_frame): TODO
 
-private:
-};
+
+    //typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
+  
+
+  private:
+  };
+}
+
+#endif
