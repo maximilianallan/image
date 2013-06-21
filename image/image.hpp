@@ -53,7 +53,7 @@ namespace sv {
     //virtual boost::shared_ptr<cv::Mat> ClassifiedImage(){return boost::shared_ptr<cv::Mat>(new cv::Mat);}
     virtual boost::shared_ptr<cv::Mat> PtrToMat() = 0; //{return image_data_.frame_;}
     virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap() = 0;
-    
+    virtual cv::Mat &ClassificationMap() = 0;
     virtual int rows() const = 0;
     virtual int cols() const = 0;
 
@@ -77,6 +77,7 @@ namespace sv {
     virtual cv::Mat &Mat(){ return *(this->image_data_.frame_); }
     virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->image_data_.frame_; }
     virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
+    virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
     virtual int rows() const { return this->image_data_.frame_->rows; }
 
     virtual int cols() const { return this->image_data_.frame_->cols; }
@@ -101,7 +102,7 @@ namespace sv {
 
 
     //TODO SPLIT TEH DATA
-    explicit StereoImage(boost::shared_ptr<cv::Mat> stereo_frame) { } //: Image(stereo_frame){}
+    explicit StereoImage(boost::shared_ptr<cv::Mat> stereo_frame) ; //: Image(stereo_frame){}
     //explicit StereoImage(cv::Mat &left_frame,right_frame): TODO
     
     typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
@@ -111,14 +112,14 @@ namespace sv {
 
     virtual cv::Mat &Mat(){ return *(this->left_image_data_.frame_); }
 
-    cv::Mat LeftMat(){ return (*(this->left_image_data_.frame_))(cv::Range::all(),cv::Range(0,cols()/2)); }
-    cv::Mat RightMat(){ return (*(this->left_image_data_.frame_))(cv::Range::all(),cv::Range(cols()/2,cols())); }
+    cv::Mat &LeftMat(){ return *(this->left_image_data_.frame_); }
+    cv::Mat &RightMat(){ return *(this->right_image_data_.frame_); }
     virtual PixelType *FrameData() { return left_image_data_.frame_->data; }
     virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->left_image_data_.frame_; }
     boost::shared_ptr<cv::Mat> PtrToDisparityMap();
     boost::shared_ptr<cv::Mat> PtrToPointCloud();
     virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
-    
+    virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
     virtual int rows() const { return this->left_image_data_.frame_->rows; }
     virtual int cols() const { return this->left_image_data_.frame_->cols; }
 
@@ -135,6 +136,19 @@ namespace sv {
   typedef Image<unsigned char, 3> Frame;
   typedef MonocularImage<unsigned char, 3> MonoFrame;
   typedef StereoImage<unsigned char, 3> StereoFrame;
+
+
+  template<typename PixelType, int Channels>
+  StereoImage<PixelType,Channels>::StereoImage(boost::shared_ptr<cv::Mat> stereo_frame){
+    const int width = stereo_frame->cols/2;
+    const cv::Size size(width,stereo_frame->rows);
+    
+    left_image_data_.Reset(size); 
+    
+    (*stereo_frame)(cv::Range::all(),cv::Range(0,width)).copyTo(*left_image_data_.frame_);
+    right_image_data_.Reset(cv::Size(0,0));
+    (*stereo_frame)(cv::Range::all(),cv::Range(width,2*width)).copyTo(*right_image_data_.frame_);
+  }
 
   template<typename PixelType, int Channels>
   boost::shared_ptr<cv::Mat> StereoImage<PixelType,Channels>::PtrToDisparityMap() {
