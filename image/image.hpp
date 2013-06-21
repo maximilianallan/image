@@ -6,31 +6,35 @@
 
 namespace sv {
 
+  template <typename PixelType, int Channels> class Image;
+  template <typename PixelType, int Channels> class MonocularImage;
+  template <typename PixelType, int Channels> class StereoImage;
+
   template<typename PixelType, int Channels>
   class __InnerImage {
 
   public:
 
-    template<typename U, int V>
+    /*template<typename U, int V>
     friend class Image;
     template<typename U, int V>
     friend class MonocularImage;
     template<typename U, int V>
-    friend class StereoImage;
+    friend class StereoImage;*/
+    friend class Image<PixelType,Channels>;
+    friend class MonocularImage<PixelType,Channels>;
+    friend class StereoImage<PixelType,Channels>;
 
-  protected:
+   //protected:
 
     boost::shared_ptr<cv::Mat> frame_;
-    //remove this from here and put in StereoImage as __InnerImage instance    
-
-    void Reset(const cv::Size size) { frame_.reset(new cv::Mat(size,CV_MAKETYPE(cv::DataDepth<PixelType>::value,Channels) )); }
-    cv::Size Size() const { return frame_ == 0x0 ?  cv::Size(0,0) : frame_->size(); }
-    PixelType *frame_data_;
-
     __InnerImage() {}
     explicit __InnerImage(boost::shared_ptr<cv::Mat> frame):frame_(frame){
       frame_data_ = (PixelType *)frame_->data;
     }
+    void Reset(const cv::Size size) { frame_.reset(new cv::Mat(size,CV_MAKETYPE(cv::DataDepth<PixelType>::value,Channels) )); }
+    cv::Size Size() const { return frame_ == 0x0 ?  cv::Size(0,0) : frame_->size(); }
+    PixelType *frame_data_;
 
   };
 
