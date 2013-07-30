@@ -56,6 +56,7 @@ namespace sv {
     virtual cv::Mat &Mat() = 0;
     //virtual boost::shared_ptr<cv::Mat> ClassifiedImage(){return boost::shared_ptr<cv::Mat>(new cv::Mat);}
     virtual boost::shared_ptr<cv::Mat> PtrToMat() = 0; //{return image_data_.frame_;}
+    virtual boost::shared_ptr<cv::Mat> PtrToROI() = 0;
     virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap() = 0;
     virtual cv::Mat &ClassificationMap() = 0;
     virtual int rows() const = 0;
@@ -82,8 +83,9 @@ namespace sv {
     virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->image_data_.frame_; }
     virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
     virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
-    virtual int rows() const { return this->image_data_.frame_->rows; }
+    virtual boost::shared_ptr<cv::Mat> PtrToROI() { return this->image_data_.frame_; }
 
+    virtual int rows() const { return this->image_data_.frame_->rows; }
     virtual int cols() const { return this->image_data_.frame_->cols; }
 
   protected:
@@ -124,11 +126,21 @@ namespace sv {
     boost::shared_ptr<cv::Mat> PtrToPointCloud();
     virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
     virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
+    virtual boost::shared_ptr<cv::Mat> PtrToROI() { 
+      boost::shared_ptr<cv::Mat> r(new cv::Mat(rectified_region_.size(),CV_8UC3));
+      *r = (*(left_image_data_.frame_))(rectified_region_).clone();
+      return r;
+    }
+
     virtual int rows() const { return this->left_image_data_.frame_->rows; }
     virtual int cols() const { return this->left_image_data_.frame_->cols; }
 
+    bool InsideRectifiedRegion(const int r, const int c) const;
+    cv::Rect rectified_region_;
+
   protected:
 
+    
     __InnerImage<PixelType,Channels> left_image_data_;
     __InnerImage<PixelType,Channels> right_image_data_;
     __InnerImage<float,3> point_cloud_data_;
@@ -153,6 +165,14 @@ namespace sv {
     right_image_data_.Reset(cv::Size(0,0));
     (*stereo_frame)(cv::Range::all(),cv::Range(width,2*width)).copyTo(*right_image_data_.frame_);
   }
+
+  template<typename PixelType, int Channels>
+  bool StereoImage<PixelType,Channels>::InsideRectifiedRegion(const int r, const int c) const {
+
+    return rectified_region_.contains(cv::Point(c,r));
+
+  }
+
 
   template<typename PixelType, int Channels>
   boost::shared_ptr<cv::Mat> StereoImage<PixelType,Channels>::PtrToDisparityMap() {
