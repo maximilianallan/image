@@ -15,28 +15,23 @@ namespace sv {
 
   public:
 
-    /*template<typename U, int V>
-    friend class Image;
-    template<typename U, int V>
-    friend class MonocularImage;
-    template<typename U, int V>
-    friend class StereoImage;*/
     friend class Image<PixelType,Channels>;
     friend class MonocularImage<PixelType,Channels>;
     friend class StereoImage<PixelType,Channels>;
 
-   //protected:
-
-    boost::shared_ptr<cv::Mat> frame_;
-    __InnerImage() {}
-    explicit __InnerImage(boost::shared_ptr<cv::Mat> frame):frame_(frame){
-      frame_data_ = (PixelType *)frame_->data;
-    }
-    void Reset(const cv::Size size) { frame_.reset(new cv::Mat(size,CV_MAKETYPE(cv::DataDepth<PixelType>::value,Channels) )); }
-    cv::Size Size() const { return frame_ == 0x0 ?  cv::Size(0,0) : frame_->size(); }
+    inline explicit __InnerImage(cv::Mat frame);
+    __InnerImage() { frame_ = cv::Mat(0,0,CV_MAKETYPE(cv::DataDepth<PixelType>::value,Channels)); }
+    
+    void Reset(const cv::Size size);
+    cv::Size Size() const;
+    
+    cv::Rect frame_roi_;
+    cv::Mat frame_;
     PixelType *frame_data_;
 
   };
+
+
 
   template<typename PixelType, int Channels>
   class Image {
@@ -49,23 +44,24 @@ namespace sv {
 
     typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
 
-    //explicit Image(boost::shared_ptr<cv::Mat> im) : image_data_(im) {}
-
-    virtual PixelType *FrameData() = 0;//{ return image_data_.frame_data_; }
+    virtual PixelType *FrameData() { return image_data_.frame_.data; }
+    
     virtual Pixel operator()(const int r, const int c) const = 0;
-    virtual cv::Mat &Mat() = 0;
-    //virtual boost::shared_ptr<cv::Mat> ClassifiedImage(){return boost::shared_ptr<cv::Mat>(new cv::Mat);}
-    virtual boost::shared_ptr<cv::Mat> PtrToMat() = 0; //{return image_data_.frame_;}
-    virtual boost::shared_ptr<cv::Mat> PtrToROI() = 0;
-    virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap() = 0;
-    virtual cv::Mat &ClassificationMap() = 0;
-    virtual int rows() const = 0;
-    virtual int cols() const = 0;
+    virtual PixelType operator()(const int r, const int c, const int chan) const = 0;  
+       
+    virtual cv::Mat GetImage() { return image_data_.frame_; } 
+    virtual cv::Mat GetImageROI() { return image_data_.frame_(image_data_.frame_roi_); }
+    virtual cv::Mat GetClassificationMap() { return classification_map_data_.frame_; }
+    virtual cv::Mat GetClassificationMapROI() { return classification_map_data_.frame_(classification_map_data_.frame_roi_); }
+    
+    virtual int rows() const { return image_data_.frame_roi_.height; }
+    virtual int cols() const { return image_data_.frame_roi_.width; }
 
-  //protected:
-
-    //__InnerImage<PixelType,Channels> image_data_;
-
+  protected:    
+    
+    __InnerImage<PixelType,Channels> image_data_;
+    __InnerImage<unsigned char,1> classification_map_data_;
+    
   };
 
   template<typename PixelType, int Channels>
@@ -73,89 +69,154 @@ namespace sv {
 
   public:
 
-    explicit MonocularImage(boost::shared_ptr<cv::Mat> frame) {} //: Image<PixelType,Channels>() {}
-
     typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
 
+    explicit MonocularImage(cv::Mat frame);
+    MonocularImage() { throw(std::runtime_error("Error, Monocular Default Constructor called!\n")); }
+
     virtual Pixel operator()(const int r, const int c) const;
-    virtual PixelType *FrameData() { return image_data_.frame_->data; }
-    virtual cv::Mat &Mat(){ return *(this->image_data_.frame_); }
-    virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->image_data_.frame_; }
-    virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
-    virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
-    virtual boost::shared_ptr<cv::Mat> PtrToROI() { return this->image_data_.frame_; }
-
-    virtual int rows() const { return this->image_data_.frame_->rows; }
-    virtual int cols() const { return this->image_data_.frame_->cols; }
-
-  protected:
-
-    __InnerImage<PixelType,Channels> image_data_;
-    __InnerImage<unsigned char,1> classification_map_data_;
+    virtual PixelType operator()(const int r, const int c, const int chan) const;  
 
   };
-
-  template<typename PixelType, int Channels>
-  boost::shared_ptr<cv::Mat> MonocularImage<PixelType,Channels>::PtrToClassificationMap() {
-    if(classification_map_data_.frame_ == 0x0) classification_map_data_.Reset(image_data_.Size());
-    return classification_map_data_.frame_;
-  }
 
   template<typename PixelType, int Channels>
   class StereoImage : public Image<PixelType,Channels> {
 
   public:
-
-
-    //TODO SPLIT TEH DATA
-    explicit StereoImage(boost::shared_ptr<cv::Mat> stereo_frame) ; //: Image(stereo_frame){}
-    //explicit StereoImage(cv::Mat &left_frame,right_frame): TODO
     
     typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
 
+    explicit StereoImage(cv::Mat stereo_frame) ; 
+    StereoImage() { throw(std::runtime_error("ERror, StereoImage Default constructor called!\n")); }
 
     virtual Pixel operator()(const int r, const int c) const;
+    virtual PixelType operator()(const int r, const int c, const int chan) const;  
 
-    virtual cv::Mat &Mat(){ return *(this->left_image_data_.frame_); }
+    cv::Mat GetDisparityMap();
+    cv::Mat GetPointCloud();
 
-    cv::Mat &LeftMat(){ return *(this->left_image_data_.frame_); }
-    cv::Mat &RightMat(){ return *(this->right_image_data_.frame_); }
-    virtual PixelType *FrameData() { return left_image_data_.frame_->data; }
-    virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->left_image_data_.frame_; }
-    boost::shared_ptr<cv::Mat> PtrToDisparityMap();
-    boost::shared_ptr<cv::Mat> PtrToPointCloud();
-    virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
-    virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
-    virtual boost::shared_ptr<cv::Mat> PtrToROI() { 
+    cv::Mat GetLeftImage();
+    cv::Mat GetRightImage();
+    cv::Mat GetLeftClassificationMap();
+    cv::Mat GetRightClassificationMap();
+
+    //virtual cv::Mat &Mat(){ return *(this->left_image_data_.frame_); }
+    /*virtual cv::Mat ImageData() { 
+    
+      cv::Mat whole_image(rows()*2,cols(),CV_8UC3);
+      cv::Mat left = whole_image(cv::Rect(0,0,cols(),rows()));
+      cv::Mat right= whole_image(cv::Rect(cols(),0,cols(),rows()));
+      
+      left_image_data_.frame_->copyTo(left);
+      right_image_data_.frame_->copyTo(right);
+
+      return whole_image;
+
+    }*/
+    //cv::Mat &LeftMat(){ return *(this->left_image_data_.frame_); }
+    //cv::Mat &RightMat(){ return *(this->right_image_data_.frame_); }
+
+    //virtual PixelType *FrameData() { return left_image_data_.frame_->data; }
+    //virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->left_image_data_.frame_; }
+
+    //virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
+    //virtual cv::Mat &ClassificationData() { return classification_map_data_.frame_; } 
+    //virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
+    /*virtual boost::shared_ptr<cv::Mat> PtrToROI() { 
       boost::shared_ptr<cv::Mat> r(new cv::Mat(rectified_region_.size(),CV_8UC3));
       *r = (*(left_image_data_.frame_))(rectified_region_).clone();
       return r;
-    }
+    }*/
 
-    virtual int rows() const { return this->left_image_data_.frame_->rows; }
-    virtual int cols() const { return this->left_image_data_.frame_->cols; }
+    void SwapEyes();
 
-    bool InsideRectifiedRegion(const int r, const int c) const;
-    cv::Rect rectified_region_;
+
+    //virtual int rows() const { return this->left_image_data_.frame_->rows; }
+    //virtual int cols() const { return this->left_image_data_.frame_->cols; }
+
+    //bool InsideRectifiedRegion(const int r, const int c) const;
+    //cv::Rect rectified_region_;
 
   protected:
 
     
-    __InnerImage<PixelType,Channels> left_image_data_;
-    __InnerImage<PixelType,Channels> right_image_data_;
+    //__InnerImage<PixelType,Channels> left_image_data_;
+    //__InnerImage<PixelType,Channels> right_image_data_;
+
     __InnerImage<float,3> point_cloud_data_;
     __InnerImage<short,1> disparity_map_data_;
-    __InnerImage<unsigned char,1> classification_map_data_;
-
+    //__InnerImage<unsigned char,1> classification_map_data_;
+    
   };
 
   typedef Image<unsigned char, 3> Frame;
   typedef MonocularImage<unsigned char, 3> MonoFrame;
   typedef StereoImage<unsigned char, 3> StereoFrame;
 
+  /************ __InnerImage ************/
 
   template<typename PixelType, int Channels>
-  StereoImage<PixelType,Channels>::StereoImage(boost::shared_ptr<cv::Mat> stereo_frame){
+  inline __InnerImage<PixelType,Channels>::__InnerImage(cv::Mat frame):frame_(frame){
+    frame_data_ = (PixelType *)frame_.data;
+  }
+
+  template<typename PixelType, int Channels>
+  inline void __InnerImage<PixelType,Channels>::Reset(const cv::Size size) { 
+    frame_ = cv::Mat(size,CV_MAKETYPE(cv::DataDepth<PixelType>::value,Channels) ); 
+  }
+
+  template<typename PixelType, int Channels>
+  inline cv::Size __InnerImage<PixelType,Channels>::Size() const { 
+    return frame_.data == 0x0 ?  cv::Size(0,0) : frame_.size(); 
+  }
+
+  /************ Image ************/
+
+
+  /************ MonocularImage ************/
+
+  template<typename PixelType, int Channels>
+  MonocularImage<PixelType,Channels>::MonocularImage(cv::Mat frame) {
+    /*const int width = frame->cols/2;
+    const cv::Size size(width,frame->rows);
+    image_data_.Reset(size); 
+    (*frame)(cv::Range::all(),cv::Range(0,width)).copyTo(*image_data_.frame_);*/
+    image_data_.frame_ = frame;
+    image_data_.frame_roi_ = cv::Rect(0,0,frame.cols,frame.rows);
+    classification_map_data_.Reset(frame.size());
+    classification_map_data_.frame_roi_ = cv::Rect(0,0,frame.cols,frame.rows);
+  }
+
+  template<typename PixelType, int Channels>
+  typename MonocularImage<PixelType,Channels>::Pixel MonocularImage<PixelType,Channels>::operator()(const int r, const int c) const {
+
+    cv::Vec<PixelType,Channels> src = image_data_.frame_.at<cv::Vec<PixelType,Channels> >(r,c);
+    Pixel dst;
+    memcpy(&dst, &src, sizeof(PixelType)*Channels);
+    return dst;
+
+  }
+  
+  template<typename PixelType, int Channels>
+  PixelType MonocularImage<PixelType,Channels>::operator()(const int r, const int c, const int chan) const {
+ 
+    return (*this)(r,c).data_[chan];
+    
+  }
+
+  /************ StereoImage ************/
+
+  template<typename PixelType, int Channels>
+  StereoImage<PixelType,Channels>::StereoImage(cv::Mat stereo_frame){
+    
+    image_data_.frame_ = stereo_frame;
+    classification_map_data_.Reset(stereo_frame.size());
+    image_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
+    classification_map_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
+    point_cloud_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
+    disparity_map_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
+
+    /*
     const int width = stereo_frame->cols/2;
     const cv::Size size(width,stereo_frame->rows);
     
@@ -164,50 +225,93 @@ namespace sv {
     (*stereo_frame)(cv::Range::all(),cv::Range(0,width)).copyTo(*left_image_data_.frame_);
     right_image_data_.Reset(cv::Size(0,0));
     (*stereo_frame)(cv::Range::all(),cv::Range(width,2*width)).copyTo(*right_image_data_.frame_);
-  }
-
-  template<typename PixelType, int Channels>
-  bool StereoImage<PixelType,Channels>::InsideRectifiedRegion(const int r, const int c) const {
-
-    return rectified_region_.contains(cv::Point(c,r));
+    */
 
   }
 
-
   template<typename PixelType, int Channels>
-  boost::shared_ptr<cv::Mat> StereoImage<PixelType,Channels>::PtrToDisparityMap() {
-    if(disparity_map_data_.frame_ == 0x0) disparity_map_data_.Reset(left_image_data_.Size());
-    return disparity_map_data_.frame_;
+  cv::Mat StereoImage<PixelType,Channels>::GetDisparityMap() {
+    if(point_cloud_data_.frame_.data == 0x0) point_cloud_data_.Reset(cv::Size(image_data_.frame_.cols * 2, image_data_.frame_.rows));
+    return point_cloud_data_.frame_;
   }
+  
 
   template<typename PixelType, int Channels>
-  boost::shared_ptr<cv::Mat> StereoImage<PixelType,Channels>::PtrToClassificationMap() {
-    if(classification_map_data_.frame_ == 0x0) classification_map_data_.Reset(left_image_data_.Size());
-    return classification_map_data_.frame_;
-  }
-
-  template<typename PixelType, int Channels>
-  boost::shared_ptr<cv::Mat> StereoImage<PixelType,Channels>::PtrToPointCloud() {
-    if(point_cloud_data_.frame_ == 0x0) point_cloud_data_.Reset(left_image_data_.Size());
+  cv::Mat StereoImage<PixelType,Channels>::GetPointCloud() {
+    if(point_cloud_data_.frame_.data == 0x0) point_cloud_data_.Reset(cv::Size(image_data_.frame_.cols * 2, image_data_.frame_.rows));
     return point_cloud_data_.frame_;
   }
 
   template<typename PixelType, int Channels>
   typename StereoImage<PixelType,Channels>::Pixel StereoImage<PixelType,Channels>::operator()(const int r, const int c) const  {
     Pixel px;
-    const int index = (r*this->left_image_data_.frame_->cols + c)*Channels;
-    memcpy(&this->left_image_data_.frame_data_[index],px.data_,Channels*sizeof(PixelType));
+    cv::Vec<PixelType,Channels> ret = image_data_.frame_(image_data_.frame_roi_).at<cv::Vec<PixelType, Channels> >(r,c);
+    memcpy(&px,&ret[0],Channels*sizeof(PixelType));
     return px;
   }
 
+  template<typename PixelType, int Channels>
+  PixelType StereoImage<PixelType,Channels>::operator()(const int r, const int c, const int chan) const  {
+    return (*this)(r,c).data_[chan];
+  }
 
+  /*
   template<typename PixelType, int Channels>
   typename MonocularImage<PixelType,Channels>::Pixel MonocularImage<PixelType,Channels>::operator()(const int r, const int c) const {
     Pixel px;
     const int index = (r*this->image_data_.frame_->cols + c)*Channels;
     memcpy(&this->image_data_.frame_data_[index],px.data_,Channels*sizeof(PixelType));
     return px;
+  }*/
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType,Channels>::GetLeftImage(){
+
+    return image_data_.frame_(cv::Rect(0,0,image_data_.frame_.cols/2,image_data_.frame_.rows));
+
   }
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType,Channels>::GetRightImage(){
+    
+    return image_data_.frame_(cv::Rect(image_data_.frame_.cols/2,0,image_data_.frame_.cols/2,image_data_.frame_.rows));
+
+  }
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType,Channels>::GetLeftClassificationMap(){
+
+    return classification_map_data_.frame_(cv::Rect(0,0,image_data_.frame_.cols/2,image_data_.frame_.rows));
+
+  }
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType,Channels>::GetRightClassificationMap(){
+
+    return classification_map_data_.frame_(cv::Rect(image_data_.frame_.cols/2,0,image_data_.frame_.cols/2,image_data_.frame_.rows));
+
+  }
+
+  template<typename PixelType, int Channels>
+  void StereoImage<PixelType,Channels>::SwapEyes() {
+
+    const int width = image_data_.frame_.cols/2;
+    const int height = image_data_.frame_.rows;
+    cv::Rect swapped_roi;
+    if(image_data_.frame_roi_.x == 0)
+      swapped_roi = cv::Rect(width,0,width,height);
+    else if(image_data_.frame_roi_.x == width)
+      swapped_roi = cv::Rect(0,0,width,height);
+    else
+      throw(std::runtime_error("Error, the eyes are messed up!\n"));
+
+    image_data_.frame_roi_ = swapped_roi;
+    classification_map_data_.frame_roi_ = swapped_roi;
+    point_cloud_data_.frame_roi_ = swapped_roi;
+    disparity_map_data_.frame_roi_ = swapped_roi;
+    
+  }
+
 
 }
 
