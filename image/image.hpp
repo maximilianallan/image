@@ -181,7 +181,8 @@ namespace sv {
     const cv::Size size(width,frame->rows);
     image_data_.Reset(size); 
     (*frame)(cv::Range::all(),cv::Range(0,width)).copyTo(*image_data_.frame_);*/
-    image_data_.frame_ = frame;
+    image_data_.frame_ = cv::Mat(frame.size(),frame.type());
+    frame.copyTo(image_data_.frame_);
     image_data_.frame_roi_ = cv::Rect(0,0,frame.cols,frame.rows);
     classification_map_data_.Reset(frame.size());
     classification_map_data_.frame_roi_ = cv::Rect(0,0,frame.cols,frame.rows);
@@ -209,7 +210,9 @@ namespace sv {
   template<typename PixelType, int Channels>
   StereoImage<PixelType,Channels>::StereoImage(cv::Mat stereo_frame){
     
-    image_data_.frame_ = stereo_frame;
+    image_data_.frame_ = cv::Mat(stereo_frame.size(),stereo_frame.type());
+    stereo_frame.copyTo(image_data_.frame_);
+    //image_data_.frame_ = stereo_frame;
     classification_map_data_.Reset(stereo_frame.size());
     image_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
     classification_map_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
