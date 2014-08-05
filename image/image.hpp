@@ -100,52 +100,13 @@ namespace sv {
     cv::Mat GetLeftClassificationMap();
     cv::Mat GetRightClassificationMap();
 
-    //virtual cv::Mat &Mat(){ return *(this->left_image_data_.frame_); }
-    /*virtual cv::Mat ImageData() { 
-    
-      cv::Mat whole_image(rows()*2,cols(),CV_8UC3);
-      cv::Mat left = whole_image(cv::Rect(0,0,cols(),rows()));
-      cv::Mat right= whole_image(cv::Rect(cols(),0,cols(),rows()));
-      
-      left_image_data_.frame_->copyTo(left);
-      right_image_data_.frame_->copyTo(right);
-
-      return whole_image;
-
-    }*/
-    //cv::Mat &LeftMat(){ return *(this->left_image_data_.frame_); }
-    //cv::Mat &RightMat(){ return *(this->right_image_data_.frame_); }
-
-    //virtual PixelType *FrameData() { return left_image_data_.frame_->data; }
-    //virtual boost::shared_ptr<cv::Mat> PtrToMat() { return this->left_image_data_.frame_; }
-
-    //virtual boost::shared_ptr<cv::Mat> PtrToClassificationMap();
-    //virtual cv::Mat &ClassificationData() { return classification_map_data_.frame_; } 
-    //virtual cv::Mat &ClassificationMap() { return *(classification_map_data_.frame_); }
-    /*virtual boost::shared_ptr<cv::Mat> PtrToROI() { 
-      boost::shared_ptr<cv::Mat> r(new cv::Mat(rectified_region_.size(),CV_8UC3));
-      *r = (*(left_image_data_.frame_))(rectified_region_).clone();
-      return r;
-    }*/
-
     void SwapEyes();
-
-
-    //virtual int rows() const { return this->left_image_data_.frame_->rows; }
-    //virtual int cols() const { return this->left_image_data_.frame_->cols; }
-
-    //bool InsideRectifiedRegion(const int r, const int c) const;
-    //cv::Rect rectified_region_;
 
   protected:
 
-    
-    //__InnerImage<PixelType,Channels> left_image_data_;
-    //__InnerImage<PixelType,Channels> right_image_data_;
-
     __InnerImage<float,3> point_cloud_data_;
     __InnerImage<short,1> disparity_map_data_;
-    //__InnerImage<unsigned char,1> classification_map_data_;
+
     
   };
 
@@ -218,17 +179,6 @@ namespace sv {
     classification_map_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
     point_cloud_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
     disparity_map_data_.frame_roi_ = cv::Rect(0,0,stereo_frame.cols/2,stereo_frame.rows);
-
-    /*
-    const int width = stereo_frame->cols/2;
-    const cv::Size size(width,stereo_frame->rows);
-    
-    left_image_data_.Reset(size); 
-    
-    (*stereo_frame)(cv::Range::all(),cv::Range(0,width)).copyTo(*left_image_data_.frame_);
-    right_image_data_.Reset(cv::Size(0,0));
-    (*stereo_frame)(cv::Range::all(),cv::Range(width,2*width)).copyTo(*right_image_data_.frame_);
-    */
 
   }
 
