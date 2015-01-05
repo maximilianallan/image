@@ -45,22 +45,30 @@ namespace sv {
     typedef typename Image<PixelType,Channels>::Pixel_ Pixel;
 
     virtual PixelType *FrameData() { return image_data_.frame_.data; }
-    
+    virtual const PixelType *FrameData() const { return image_data_.frame_.data; }
+
     virtual Pixel operator()(const int r, const int c) const = 0;
     virtual PixelType operator()(const int r, const int c, const int chan) const = 0;  
        
     virtual cv::Mat GetImage() { return image_data_.frame_; } 
+    virtual cv::Mat GetImage() const { return image_data_.frame_.clone(); }
+
     virtual cv::Mat GetImageROI() { return image_data_.frame_(image_data_.frame_roi_); }
+    virtual cv::Mat GetImageROI() const { return image_data_.frame_(image_data_.frame_roi_).clone(); }
+
     virtual cv::Mat GetClassificationMap() { return classification_map_data_.frame_; }
+    virtual cv::Mat GetClassificationMap() const { return classification_map_data_.frame_.clone(); }
+
     virtual cv::Mat GetClassificationMapROI() { return classification_map_data_.frame_(classification_map_data_.frame_roi_); }
-    
+    virtual cv::Mat GetClassificationMapROI() const { return classification_map_data_.frame_(classification_map_data_.frame_roi_).clone(); }
+
     virtual int rows() const { return image_data_.frame_roi_.height; }
     virtual int cols() const { return image_data_.frame_roi_.width; }
 
   protected:    
     
     __InnerImage<PixelType,Channels> image_data_;
-    __InnerImage<unsigned char,1> classification_map_data_;
+    __InnerImage<float,1> classification_map_data_;
     
   };
 
@@ -76,6 +84,9 @@ namespace sv {
 
     virtual Pixel operator()(const int r, const int c) const;
     virtual PixelType operator()(const int r, const int c, const int chan) const;  
+
+  protected:
+
 
   };
 
@@ -97,8 +108,12 @@ namespace sv {
 
     cv::Mat GetLeftImage();
     cv::Mat GetRightImage();
+    cv::Mat GetLeftImage() const;
+    cv::Mat GetRightImage() const;
     cv::Mat GetLeftClassificationMap();
     cv::Mat GetRightClassificationMap();
+    cv::Mat GetLeftClassificationMap() const;
+    cv::Mat GetRightClassificationMap() const;
 
     void SwapEyes();
 
@@ -106,7 +121,6 @@ namespace sv {
 
     __InnerImage<float,3> point_cloud_data_;
     __InnerImage<short,1> disparity_map_data_;
-
     
   };
 
@@ -147,6 +161,7 @@ namespace sv {
     image_data_.frame_roi_ = cv::Rect(0,0,frame.cols,frame.rows);
     classification_map_data_.Reset(frame.size());
     classification_map_data_.frame_roi_ = cv::Rect(0,0,frame.cols,frame.rows);
+
   }
 
   template<typename PixelType, int Channels>
@@ -225,9 +240,37 @@ namespace sv {
   }
 
   template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType, Channels>::GetLeftImage() const {
+
+    return image_data_.frame_(cv::Rect(0, 0, image_data_.frame_.cols / 2, image_data_.frame_.rows)).clone();
+
+  }
+
+  template<typename PixelType, int Channels>
   cv::Mat StereoImage<PixelType,Channels>::GetRightImage(){
     
     return image_data_.frame_(cv::Rect(image_data_.frame_.cols/2,0,image_data_.frame_.cols/2,image_data_.frame_.rows));
+
+  }
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType, Channels>::GetRightImage() const {
+
+    return image_data_.frame_(cv::Rect(image_data_.frame_.cols / 2, 0, image_data_.frame_.cols / 2, image_data_.frame_.rows)).clone();
+
+  }
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType, Channels>::GetLeftClassificationMap() const{
+
+    return classification_map_data_.frame_(cv::Rect(0, 0, image_data_.frame_.cols / 2, image_data_.frame_.rows)).clone();
+
+  }
+
+  template<typename PixelType, int Channels>
+  cv::Mat StereoImage<PixelType, Channels>::GetRightClassificationMap() const{
+
+    return classification_map_data_.frame_(cv::Rect(image_data_.frame_.cols / 2, 0, image_data_.frame_.cols / 2, image_data_.frame_.rows)).clone();
 
   }
 
